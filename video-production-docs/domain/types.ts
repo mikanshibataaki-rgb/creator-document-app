@@ -1,10 +1,40 @@
 export type TaxKind = "税別" | "税込" | "非課税" | "不課税";
-export type DocumentKind = "hearing" | "sheet" | "estimate" | "settlement" | "confirmation" | "delivery" | "invoice";
+export type DocumentKind = "guide" | "hearing" | "sheet" | "estimate" | "settlement" | "confirmation" | "delivery" | "invoice";
 export type CreatorRole = "映像制作者" | "カメラマン" | "編集者" | "デザイナー" | "イラストレーター" | "Web制作者" | "ライター" | "音楽制作者" | "ナレーター" | "俳優・モデル" | "ヘアメイク" | "スタイリスト" | "配信者" | "SNS運用者" | "イベント制作者";
+export type RoleColorGroup = "videoAudio" | "designVisual" | "textMedia" | "humanStage" | "streamLive";
 
 export interface EstimateLine {
   id: string; category: string; name: string; description: string;
-  unitPrice: number; quantity: number; unit: string; tax: TaxKind;
+  unitPrice: number; quantity: number; unit: string; tax: TaxKind; sourceRole?: CreatorRole;
+}
+
+export interface RoleTemplateLine {
+  name: string; category?: string; description?: string; unitPrice?: number; quantity?: number; unit?: string; tax?: TaxKind; sourceRole?: CreatorRole;
+}
+
+export interface NoteOption {
+  id: string; text: string;
+}
+
+export interface InterviewGuideQuestion {
+  id: string; category: string; question: string; reason: string;
+}
+
+export interface RoleTemplate {
+  hearingExample: string; projectExample: string; estimateLines: RoleTemplateLine[];
+  invoiceLines: string[]; deliveryText: string; confirmText: string; rightsText: string;
+  colorGroup?: RoleColorGroup; themeColor?: string;
+  noteOptions?: NoteOption[];
+  deliverables?: string; format?: string; deliveryMethod?: string;
+  conditionName?: string; outputName?: string; completionDocumentName?: string; conditionFields?: string[];
+}
+
+export interface HearingFieldGroup {
+  title: string; fields: string[];
+}
+
+export interface AiFollowupRule {
+  whenIncludes: string[]; questions: string[];
 }
 
 export interface ExpenseLine {
@@ -29,6 +59,7 @@ export interface ProjectDocument {
   summary: string; deliverableIdea: string; purpose: string; target: string; referenceUrl: string;
   budget: string; undecided: string; internalMemo: string; client: Client; vendor: Vendor;
   selectedRoles: CreatorRole[]; roleAnswers: Record<string, string>;
+  meetingTranscript: string;
   hearingType: string; requestedContent: string; finalImage: string; requiredCount: string;
   hasVerticalVideo: string; hasHorizontalVideo: string; hasPhotoShoot: string; budgetFixed: string;
   maxBudget: string; competingQuote: string; budgetIncludes: string; desiredShootDate: string;
@@ -39,9 +70,10 @@ export interface ProjectDocument {
   revisions: string; media: string; usagePeriod: string; secondaryUse: string;
   snsPermission: string; websitePermission: string; portfolioPermission: string;
   confirmationIntro: string; inScope: string; outOfScope: string; notes: string;
+  selectedNoteIds: string[]; customNote: string;
   credit: string; copyright: string; dataHandover: string; issueDate: string; validUntil: string;
   paymentTerms: string; discount: number; taxRate: number; withholdingEnabled: boolean; advance: number;
-  lines: EstimateLine[]; expenseLines: ExpenseLine[];
+  lines: EstimateLine[]; dismissedEstimateCandidates: string[]; expenseLines: ExpenseLine[];
   deliveryDateActual: string; deliveryMethod: string; deliveryNotes: string;
   invoiceDate: string; paymentDue: string; updatedAt: string;
 }
@@ -52,4 +84,14 @@ export interface Totals {
   estimateNet: number; estimateTax: number; estimateGross: number;
   settlementNet: number; settlementTax: number; settlementGross: number;
   invoiceNet: number; invoiceTax: number; invoiceTotal: number;
+}
+
+export interface SavedDocumentRecord {
+  id: string;
+  documentKind: Exclude<DocumentKind, "guide" | "hearing" | "sheet">;
+  document: ProjectDocument;
+  amount: number;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }

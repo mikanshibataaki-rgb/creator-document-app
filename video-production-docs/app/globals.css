@@ -2,14 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
+/* Creator OS Design System v1.0。書類(.doc-page)は常に白。 */
+:root {
+  --canvas:#f8f7f4; --surface:#ffffff; --surface-2:#f1f0ec; --surface-3:#ffffff;
+  --line:rgba(0,0,0,.08); --line-strong:rgba(0,0,0,.14);
+  --fg:#18181b; --fg-2:#71717a; --fg-3:#a1a1aa; --preview:#d8d8d4;
+}
+.dark {
+  --canvas:#0d0d0f; --surface:#16161a; --surface-2:#1e1e24; --surface-3:#232329;
+  --line:#2c2c30; --line-strong:#3a3a40;
+  --fg:#ffffff; --fg-2:#b5b5bc; --fg-3:#636366; --preview:#0d0d0f;
+}
+
 * { box-sizing: border-box; }
-html { background: #f7f7f4; }
-body { margin: 0; color: #17201d; font-family: "Hiragino Sans", "Yu Gothic", YuGothic, system-ui, sans-serif; }
+html { background: var(--canvas); }
+.dark { color-scheme: dark; }
+body {
+  margin: 0; background: var(--canvas); color: var(--fg);
+  font-family: "Urbanist", "Inter", "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", YuGothic, system-ui, sans-serif;
+  line-height: 1.65; letter-spacing: .02em;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility;
+}
 button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
-.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #d4d4d4 transparent; }
-.doc-page { width: 210mm; min-height: 297mm; }
+
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+
+.doc-page { width: 210mm; min-height: 297mm; background: #fff; color: #1a1a1a; }
+.doc-page::after {
+  content: "作成：東海制作"; position: absolute; right: 10mm; bottom: 7mm; font-size: 8px; color: #a3a3a3;
+}
 .print-only { display: none; }
 
 @media (max-width: 1023px) {
@@ -18,12 +40,22 @@ button { -webkit-tap-highlight-color: transparent; }
 }
 
 @media print {
-  body { background: white !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  html, .dark { background: #fff !important; }
+  body { background: white !important; color: #1a1a1a !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   .no-print { display: none !important; }
   .print-only { display: block; }
   .preview-pane { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
   .doc-viewport { padding: 0 !important; overflow: visible !important; }
-  .doc-page { width: 210mm !important; min-height: 297mm !important; margin: 0 !important; padding: 14mm 15mm !important; box-shadow: none !important; break-after: page; }
+  .doc-viewport > div { display: block !important; min-width: 0 !important; }
+  .doc-page {
+    width: 100% !important; min-height: 0 !important; height: auto !important; margin: 0 !important;
+    padding: 0 !important; box-shadow: none !important; outline: none !important;
+    --tw-ring-shadow: 0 0 #0000 !important;
+    break-after: auto !important; page-break-after: auto !important; font-size: 9px !important; line-height: 1.35 !important;
+  }
+  .doc-page header { margin-bottom: 4mm !important; padding-bottom: 2.5mm !important; }
+  .doc-page table th, .doc-page table td { padding-top: 2.5px !important; padding-bottom: 2.5px !important; }
+  .doc-page::after { right: 0; bottom: 0; }
   .avoid-break { break-inside: avoid; }
-  @page { size: A4 portrait; margin: 0; }
+  @page { size: A4 portrait; margin: 12mm 13mm; }
 }

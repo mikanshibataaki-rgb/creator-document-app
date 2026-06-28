@@ -10,6 +10,7 @@ build/
 out/
 *.tsbuildinfo
 *.zip
+backups/
 
 # Local env / secrets
 .env
@@ -31,3 +32,6 @@ venv/
 
 # Local generated output
 output/
+
+# Local visual checks / temporary app screenshots
+video-production-docs/*.png
