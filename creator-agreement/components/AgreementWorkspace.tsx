@@ -65,6 +65,18 @@ function yen(value: string) {
   return number > 0 ? `${number.toLocaleString("ja-JP")}円` : "未設定";
 }
 
+function displayStatus(status: ProjectStatus) {
+  const labels: Record<ProjectStatus, string> = {
+    下書き: "下書き",
+    送信済み: "共有準備済み",
+    閲覧済み: "閲覧済み",
+    同意済み: "双方確認済み",
+    期限切れ: "期限切れ",
+    取消済み: "取消済み",
+  };
+  return labels[status] ?? status;
+}
+
 function getChecks(content: AgreementContent): Check[] {
   const checks: Check[] = [];
   const add = (level: Check["level"], title: string, detail: string, field: keyof AgreementContent, step: number) =>
@@ -142,12 +154,7 @@ function SecurityGuide() {
   return <aside className="security-guide">
     <div><Icon name="shield" /></div>
     <p><b>β版のご利用について</b></p>
-    <ul>
-      <li>契約書・発注確認書のたたき台作成を支援するツールです。</li>
-      <li>法的効力や個別案件への適合性を保証するものではありません。</li>
-      <li>重要な契約は専門家へご確認ください。</li>
-      <li>入力内容はこの端末のブラウザに保存されます。</li>
-    </ul>
+    <p>{betaNotice}</p>
   </aside>;
 }
 
@@ -202,7 +209,7 @@ export function AgreementWorkspace() {
     setDatabase({
       ...database,
       projects: database.projects.map((item) => item.id === project.id ? { ...item, status: "閲覧済み", updatedAt: viewedAt } : item),
-      timelineEvents: [...database.timelineEvents, createEvent(project.id, version.id, "agreement_viewed", "契約内容の共有確認ページを閲覧（試作）", "recipient")],
+      timelineEvents: [...database.timelineEvents, createEvent(project.id, version.id, "agreement_viewed", "契約内容の共有確認ページを閲覧", "recipient")],
     });
   }, [screen, activeProjectId, database]);
 
@@ -228,7 +235,7 @@ export function AgreementWorkspace() {
     if (!database) return [];
     return database.projects.filter((project) => {
       const projectContent = getContent(database, project);
-      const matchesSearch = `${project.title} ${projectContent.clientName}`.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch = `${project.title} ${projectContent.clientName} ${projectContent.creatorName}`.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "すべて" || project.status === statusFilter;
       const matchesDate = !dateFilter || project.createdAt.slice(0, 10) === dateFilter;
       return matchesSearch && matchesStatus && matchesDate;
@@ -329,7 +336,7 @@ export function AgreementWorkspace() {
       timelineEvents: [
         ...current.timelineEvents,
         createEvent(activeProject.id, activeVersion.id, "sender_confirmed", `送信者がVer.${activeProject.versionNumber}を申し込み内容として確定`, "sender"),
-        createEvent(activeProject.id, activeVersion.id, "share_link_created", "契約内容の共有URLを作成（試作）", "system"),
+        createEvent(activeProject.id, activeVersion.id, "share_link_created", "契約内容の共有URLを作成", "system"),
       ],
     }));
     setScreen("preview");
@@ -359,7 +366,7 @@ export function AgreementWorkspace() {
     patchDatabase((current) => ({
       ...current,
       recipients: [...current.recipients.filter((entry) => entry.agreementVersionId !== activeVersion.id), item],
-      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "verification_requested", "メール確認を依頼（試作）", "recipient")],
+      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "verification_requested", "メール確認を依頼", "recipient")],
     }));
   };
 
@@ -368,19 +375,19 @@ export function AgreementWorkspace() {
     patchDatabase((current) => ({
       ...current,
       recipients: current.recipients.map((entry) => entry.id === recipient.id ? { ...entry, verificationStatus: "確認済み", verifiedAt: nowIso() } : entry),
-      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "email_verified", "メールアドレスを確認（試作）", "recipient")],
+      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "email_verified", "メールアドレスを確認", "recipient")],
     }));
   };
 
   const acceptAgreement = () => {
     if (!activeProject || !activeVersion || !recipient || recipient.verificationStatus !== "確認済み" || !signerName || !consentChecked) return;
     const agreedAt = nowIso();
-    const item: Signature = { id: createId("signature"), agreementVersionId: activeVersion.id, recipientId: recipient.id, signatureType: "name", signerName, signatureData: signerName, agreedAt, agreementText: "内容を確認し、この条件に同意します", ipAddress: "prototype-not-recorded", userAgent: navigator.userAgent };
+    const item: Signature = { id: createId("signature"), agreementVersionId: activeVersion.id, recipientId: recipient.id, signatureType: "name", signerName, signatureData: signerName, agreedAt, agreementText: "契約書・発注確認書のたたき台を確認しました", ipAddress: "prototype-not-recorded", userAgent: navigator.userAgent };
     patchDatabase((current) => ({
       ...current,
       projects: current.projects.map((project) => project.id === activeProject.id ? { ...project, status: "同意済み", updatedAt: agreedAt } : project),
       signatures: [...current.signatures, item],
-      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "agreement_accepted", `${signerName}さんが内容に同意しました`, "recipient")],
+      timelineEvents: [...current.timelineEvents, createEvent(activeProject.id, activeVersion.id, "agreement_accepted", `${signerName}さんが契約内容を確認しました`, "recipient")],
     }));
     setScreen("complete");
   };
@@ -408,7 +415,7 @@ export function AgreementWorkspace() {
         <span className={`save-status ${saved ? "is-saved" : ""}`}><span className="save-dot" />{saved ? "この端末に保存済み" : "保存中…"}</span>
         <button className="ghost-button theme-button" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme === "dark" ? "白背景にする" : "黒背景にする"}</button>
         <button className="ghost-button roadmap-button" onClick={() => setScreen("roadmap")}>今後の展望</button>
-        {screen !== "list" && <button className="ghost-button" onClick={() => setScreen("list")}>案件一覧</button>}
+        {screen !== "list" && <button className="ghost-button" onClick={() => setScreen("list")}>契約書一覧</button>}
       </div>
     </header>
 
@@ -438,7 +445,7 @@ export function AgreementWorkspace() {
       <div className="list-title-row"><div><h2>契約書一覧</h2><p>作成した契約書・発注確認書を一覧で確認できます。過去の案件を複製して、新しい仕事にも再利用できます。</p></div></div>
       <div className="filter-bar">
         <label className="search-box"><Icon name="search" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="案件名・発注者名・受注者名で検索" /></label>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProjectStatus | "すべて")}><option>すべて</option>{statuses.map((status) => <option key={status}>{status}</option>)}</select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as ProjectStatus | "すべて")}><option>すべて</option>{statuses.map((status) => <option key={status} value={status}>{displayStatus(status)}</option>)}</select>
         <input type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
         {(search || statusFilter !== "すべて" || dateFilter) && <button className="text-button" onClick={() => { setSearch(""); setStatusFilter("すべて"); setDateFilter(""); }}>絞り込みを解除</button>}
       </div>
@@ -448,26 +455,26 @@ export function AgreementWorkspace() {
           const projectContent = getContent(database, project);
           return <article className="project-card" key={project.id}>
             <button className="project-main" onClick={() => openProject(project.id)}>
-              <div className="project-meta"><span className={`status status-${project.status}`}>{project.status}</span><span>{project.projectNumber}</span><span>Ver.{project.versionNumber}</span></div>
+              <div className="project-meta"><span className={`status status-${project.status}`}>{displayStatus(project.status)}</span><span>{project.projectNumber}</span><span>Ver.{project.versionNumber}</span></div>
               <h2>{project.title}</h2>
               <p>{projectContent.clientName || "発注者未設定"}　・　{yen(projectContent.fee)}　・　納期 {formatDate(projectContent.deliveryDate)}</p>
               {project.nextReminderAt && <small><Icon name="bell" />次回リマインド予定 {formatDateTime(project.nextReminderAt)}</small>}
             </button>
             <div className="project-actions">
-              <button onClick={() => openProject(project.id)}>開く</button>
+              <button onClick={() => openProject(project.id)}>契約書を開く</button>
               <button onClick={() => duplicateProject(project)}><Icon name="copy" />複製</button>
             </div>
           </article>;
         })}
         {!filteredProjects.length && <div className="empty-state"><h2>まだ契約書がありません。</h2><p>最初の仕事条件を入力して、契約書のたたき台を作成しましょう。</p><button className="primary-button" onClick={addProject}>契約書を作成する</button></div>}
       </div>
-      <button className="reset-link" onClick={() => { const next = resetDatabase(); setDatabase(next); setActiveProjectId(next.projects[0].id); }}>試作データを初期状態に戻す</button>
+      <button className="reset-link" onClick={() => { const next = resetDatabase(); setDatabase(next); setActiveProjectId(next.projects[0].id); }}>入力サンプルを初期状態に戻す</button>
     </section>}
 
     {screen === "roadmap" && <section className="roadmap-screen">
       <div className="page-heading">
         <div><span className="eyebrow">ROADMAP</span><h1>今後の展望</h1><p>契約書・発注確認書の作成、共有、保存をもっと簡単にするため、段階的に機能を追加していきます。</p></div>
-        <button className="primary-button" onClick={() => setScreen("list")}>案件一覧へ戻る</button>
+        <button className="primary-button" onClick={() => setScreen("list")}>契約書一覧へ戻る</button>
       </div>
       <div className="roadmap-grid">
         <article><span>現在できること</span><h2>契約書の作成からPDF保存まで</h2><p>仕事条件の入力、抜け漏れ確認、契約書プレビュー、双方確認、PDF保存までをブラウザ内で体験できます。</p></article>
@@ -481,7 +488,7 @@ export function AgreementWorkspace() {
     {(screen === "edit" || screen === "preview" || screen === "complete") && <div className="detail-shell">
       <aside className="detail-sidebar">
         <div className="side-project">
-          <span className={`status status-${activeProject.status}`}>{activeProject.status}</span>
+          <span className={`status status-${activeProject.status}`}>{displayStatus(activeProject.status)}</span>
           <h2>{activeProject.title}</h2>
           <p>{activeProject.projectNumber} / Ver.{activeProject.versionNumber}</p>
           {activeProject.managerProjectId && <small>共通案件ID {activeProject.managerProjectId}</small>}
@@ -513,7 +520,7 @@ export function AgreementWorkspace() {
         <div className="step-nav">{steps.map((label, index) => <button key={label} className={`${step === index ? "active" : ""} ${stepStates[index].missing ? "has-alert" : "is-filled"}`} onClick={() => setStep(index)}><span>{index + 1}</span><small>{label}<em>{stepStates[index].missing ? `未確認 ${stepStates[index].missing}` : index === 6 ? "確認" : "入力済み"}</em></small></button>)}</div>
         <div className="editor-workbench">
         <fieldset disabled={locked} className="form-card">
-          {step === 0 && <><div className="section-title"><span>01</span><div><h2>誰と、どの案件を進めるか</h2><p>案件マネージャーとの共通IDもここで保持します。</p></div></div><div className="form-grid">
+          {step === 0 && <><div className="section-title"><span>01</span><div><h2>誰と、どの案件を進めるか</h2><p>発注者・受注者・案件名を入力します。案件IDがある場合は一緒に記録できます。</p></div></div><div className="form-grid">
             <Field label="共通案件ID"><input name="managerProjectId" value={content.managerProjectId} onChange={(event) => updateContent("managerProjectId", event.target.value)} /></Field>
             <Field label="業種"><input value={content.category} onChange={(event) => updateContent("category", event.target.value)} /></Field>
             <Field label="案件名" wide><input name="projectName" value={content.projectName} onChange={(event) => updateContent("projectName", event.target.value)} /></Field>
@@ -578,13 +585,13 @@ export function AgreementWorkspace() {
         <div className="preview-topbar"><div><span>契約書プレビュー</span><b>Ver.{activeProject.versionNumber} {locked ? "確定済み" : "下書き"}</b><p>入力内容をもとに、契約書・発注確認書のたたき台を表示しています。内容を確認してからPDF保存してください。</p></div>{!locked && <button className="primary-button" disabled={blockingChecks.length > 0} onClick={confirmVersion}>{blockingChecks.length ? `明示項目をあと${blockingChecks.length}件確認` : "この内容で下書き保存"}</button>}</div>
         <div className="preview-grid">
           <div className="check-column">
-            <div className={`check-summary ${checks.length ? "" : "complete"}`}><Icon name={checks.length ? "help" : "check"} /><div><span>抜け漏れ確認</span><h2>{checks.length ? `確認したい項目が${checks.length}件あります` : "必要な確認が整いました"}</h2></div></div>
+            <div className={`check-summary ${checks.length ? "" : "complete"}`}><Icon name={checks.length ? "help" : "check"} /><div><span>契約前チェック</span><h2>{checks.length ? `確認したい項目が${checks.length}件あります` : "契約前の条件が整いました"}</h2></div></div>
             {checks.map((check) => <button className="check-item" key={`${check.field}-${check.title}`} onClick={() => { setScreen("edit"); setStep(check.step); window.setTimeout(() => document.querySelector<HTMLElement>(`[name="${check.field}"]`)?.focus(), 50); }}><span className={`level-dot ${check.level}`} /><span><b>{check.title}</b><small>{check.detail}</small></span><span>›</span></button>)}
             <div className="law-note"><b>フリーランス法チェックについて</b><p>法令の適用や有効性を断定せず、発注者が明示を検討する項目の入力状況を確認しています。</p></div>
-            <div className="pdf-guide"><b>PDFで保存</b><p>作成した契約書をPDFとして保存できます。発注者・受注者の双方で同じ内容を確認するために使用してください。</p><p>推奨ファイル名：日付_{content.clientName || "発注者名"}_契約書_{content.projectName || activeProject.title}.pdf</p><button className="primary-button" onClick={downloadPdf}><Icon name="download" />契約書PDFを保存</button><button className="secondary-button" onClick={() => setScreen("edit")}>内容を修正する</button></div>
+            <div className="pdf-guide"><b>PDFで保存</b><p>作成した契約書をPDFとして保存できます。発注者・受注者の双方で同じ内容を確認するために使用してください。</p><p>推奨ファイル名：日付_{content.clientName || "発注者名"}_契約書_{content.projectName || activeProject.title}.pdf</p><button className="primary-button" onClick={downloadPdf}><Icon name="download" />契約書PDFを保存</button><button className="secondary-button" onClick={downloadPdf}><Icon name="download" />発注確認書PDFを保存</button><button className="secondary-button" onClick={() => setScreen("edit")}>内容を修正する</button></div>
           </div>
           <article className="agreement-card">
-            {activeVersion.replacedAt && <div className="old-version-notice">新しい内容があります。このバージョンでは同意できません。</div>}
+            {activeVersion.replacedAt && <div className="old-version-notice">新しい内容があります。このバージョンでは確認操作はできません。</div>}
             <header className="agreement-header"><div className="agreement-logo"><Icon name="shield" /></div><span>契約書・発注確認書 たたき台</span><h1>{content.projectName}</h1><p>大切な仕事条件を、書面として確認できる形にまとめました。</p></header>
             <div className="agreement-body">
               <div className="preview-lock-note">{betaNotice}</div>
@@ -597,14 +604,15 @@ export function AgreementWorkspace() {
               <section className="detail-section"><h2>キャンセル・追加対応</h2><dl><div><dt>キャンセル時の扱い</dt><dd>{content.cancellation || "未設定"}</dd></div><div><dt>追加修正・再編集料金</dt><dd>{content.reEditingFee || "未設定"}</dd></div><div><dt>損害賠償上限 <HelpButton id="liability" onOpen={setHelpId} /></dt><dd>{content.liabilityLimit || "個別に協議"}</dd></div></dl></section>
               {!locked && <div className="preview-lock-note">この契約書は入力内容をもとに作成されたたたき台です。内容を確認してからPDF保存してください。</div>}
               {locked && !signature && !activeVersion.replacedAt && <div className="consent-box">
+                <div className="consent-heading"><b>契約内容を確認する</b><p>発注者・受注者の双方で、報酬・納期・作業範囲・使用範囲・キャンセル条件を確認してください。</p></div>
                 <label className="consent-check"><input type="checkbox" checked={consentChecked} onChange={(event) => setConsentChecked(event.target.checked)} /><span>内容を確認しました</span></label>
                 <input value={signerName} onChange={(event) => setSignerName(event.target.value)} placeholder="氏名を入力" />
                 {!recipient && <button disabled={!signerName} onClick={requestEmail}>メール確認へ進む</button>}
                 {recipient?.verificationStatus === "確認待ち" && <button onClick={verifyEmail}>確認メールを開いた想定で「確認済み」にする</button>}
-                {recipient?.verificationStatus === "確認済み" && <><p className="verified"><Icon name="check" />メール確認済み（試作）</p><button disabled={!consentChecked || !signerName} onClick={acceptAgreement}>内容を確認しました</button></>}
+                {recipient?.verificationStatus === "確認済み" && <><p className="verified"><Icon name="check" />メール確認済み</p><button disabled={!consentChecked || !signerName} onClick={acceptAgreement}>内容を確認しました</button></>}
                 <small>この確認は、入力内容を共有するためのものです。電子署名や法的効力を保証するものではありません。共有URLを知っている人は内容を閲覧できる可能性があります。</small>
               </div>}
-              {signature && <div className="accepted-box"><Icon name="check" /><div><b>{signature.signerName}さんが内容に同意しました</b><span>{formatDateTime(signature.agreedAt)}</span></div></div>}
+              {signature && <div className="accepted-box"><Icon name="check" /><div><b>{signature.signerName}さんが契約内容を確認しました</b><span>{formatDateTime(signature.agreedAt)}</span></div></div>}
             </div>
           </article>
         </div>
@@ -615,7 +623,7 @@ export function AgreementWorkspace() {
       </section>}
     </div>}
 
-    {importOpen && <div className="modal-backdrop" onMouseDown={() => setImportOpen(false)}><div className="modal-card import-modal" onMouseDown={(event) => event.stopPropagation()}><span className="eyebrow">CREATOR PROJECT MANAGER</span><h2>取り込む案件を選ぶ</h2><p>共通案件IDをキーに、案件マネージャーの情報を入力欄へ反映します。</p>{managerProjects.map((project) => <button className="import-card" key={project.id} onClick={() => importProject(project)}><span>{project.id}</span><b>{project.title}</b><small>{project.clientName} / {yen(project.fee)} / 納期 {formatDate(project.deliveryDate)}</small></button>)}<button className="ghost-button" onClick={() => setImportOpen(false)}>閉じる</button></div></div>}
+    {importOpen && <div className="modal-backdrop" onMouseDown={() => setImportOpen(false)}><div className="modal-card import-modal" onMouseDown={(event) => event.stopPropagation()}><span className="eyebrow">案件情報の取り込み</span><h2>取り込む案件を選ぶ</h2><p>登録済みの案件情報を使って、契約書の入力欄に反映します。</p>{managerProjects.map((project) => <button className="import-card" key={project.id} onClick={() => importProject(project)}><span>{project.id}</span><b>{project.title}</b><small>{project.clientName} / {yen(project.fee)} / 納期 {formatDate(project.deliveryDate)}</small></button>)}<button className="ghost-button" onClick={() => setImportOpen(false)}>閉じる</button></div></div>}
     {helpId && <div className="modal-backdrop" onMouseDown={() => setHelpId(null)}><div className="modal-card help-modal" onMouseDown={(event) => event.stopPropagation()}><div className="help-icon"><Icon name="help" /></div><h2>{helpText[helpId].title}</h2><p>{helpText[helpId].text}</p><small>この説明は一般的な理解を助けるためのもので、法律相談ではありません。</small><button className="primary-button" onClick={() => setHelpId(null)}>わかりました</button></div></div>}
   </main>;
 }

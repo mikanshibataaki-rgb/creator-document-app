@@ -3,6 +3,8 @@ node_modules/
 out/
 output/pdf/*.pdf
 tmp/
+.codex-backups/
+**/.codex-backups/
 .env*
 !.env.example
 *.log

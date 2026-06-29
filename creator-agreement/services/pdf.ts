@@ -147,7 +147,7 @@ export async function createAgreementPdf(
   row("注意事項", "本書は入力内容をもとに作成された契約書・発注確認書のたたき台です。法的効力や個別案件への適合性を保証するものではありません。重要な契約は専門家へご確認ください。");
 
   footer();
-  const filename = `${project.projectNumber}_${content.projectName.replace(/[\\/:*?\"<>|]/g, "_")}_Ver${project.versionNumber}.pdf`;
+  const filename = `${project.projectNumber}_契約書_${content.projectName.replace(/[\\/:*?\"<>|]/g, "_")}_Ver${project.versionNumber}.pdf`;
   doc.save(filename);
   return filename;
 }

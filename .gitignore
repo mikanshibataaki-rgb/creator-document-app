@@ -11,6 +11,8 @@ out/
 *.tsbuildinfo
 *.zip
 backups/
+.codex-backups/
+**/.codex-backups/
 
 # Local env / secrets
 .env
