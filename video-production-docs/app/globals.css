@@ -29,6 +29,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 
 .doc-page { width: 210mm; min-height: 297mm; background: #fff; color: #1a1a1a; }
+.doc-zoom { transition: zoom .15s ease; }
 .doc-page::after {
   content: "作成：東海制作"; position: absolute; right: 10mm; bottom: 7mm; font-size: 8px; color: #a3a3a3;
 }
@@ -47,6 +48,7 @@ button { -webkit-tap-highlight-color: transparent; }
   .preview-pane { display: block !important; position: static !important; overflow: visible !important; background: white !important; }
   .doc-viewport { padding: 0 !important; overflow: visible !important; }
   .doc-viewport > div { display: block !important; min-width: 0 !important; }
+  .doc-zoom { zoom: 1 !important; }
   .doc-page {
     width: 100% !important; min-height: 0 !important; height: auto !important; margin: 0 !important;
     padding: 0 !important; box-shadow: none !important; outline: none !important;

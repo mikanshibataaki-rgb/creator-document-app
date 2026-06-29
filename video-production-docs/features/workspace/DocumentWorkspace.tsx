@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { calculateTotals, recommendedPdfFileName } from "@/domain/format";
 import { createId, seedDocument } from "@/domain/seed";
 import type { Client, DocumentKind, ProjectDocument, SavedDocumentRecord } from "@/domain/types";
@@ -29,13 +29,19 @@ export function DocumentWorkspace() {
   const [tab, setTab] = useState<FormTab>("roles");
   const [documentKind, setDocumentKind] = useState<DocumentKind>("hearing");
   const [mobilePane, setMobilePane] = useState<"form" | "preview">("form");
+  const [splitPercent, setSplitPercent] = useState(56);
+  const [previewScale, setPreviewScale] = useState(0.58);
   const [saveState, setSaveState] = useState<"loading" | "saved" | "saving">("loading");
   const [theme, setTheme] = useState<Theme>("dark");
   const [roadmapOpen, setRoadmapOpen] = useState(false);
   const hydrated = useRef(false);
+  const splitAreaRef = useRef<HTMLDivElement>(null);
+  const formPaneRef = useRef<HTMLElement>(null);
+  const previewPaneRef = useRef<HTMLElement>(null);
+  const previewViewportRef = useRef<HTMLDivElement>(null);
   const totals = useMemo(() => calculateTotals(document), [document]);
   const roleColor = useMemo(() => getPrimaryRoleColorMeta(document.selectedRoles), [document.selectedRoles]);
-  const roleAccentStyle = { "--role-accent": roleColor.color, "--role-accent-soft": roleColor.soft, "--role-accent-border": roleColor.border } as CSSProperties;
+  const roleAccentStyle = { "--role-accent": roleColor.color, "--role-accent-soft": roleColor.soft, "--role-accent-border": roleColor.border, "--form-pane-size": `${splitPercent}%` } as CSSProperties;
 
   useEffect(() => { void (async () => { const [saved, savedClients, savedRecords] = await Promise.all([localDocumentRepository.load(), localDocumentRepository.loadClients(), localDocumentRepository.loadRecords()]); if (saved) { const legacy = saved as ProjectDocument & { settlementLines?: ProjectDocument["expenseLines"]; dismissedEstimateCandidates?: string[] }; setDocumentState({ ...seedDocument, ...saved, client: { ...seedDocument.client, ...saved.client }, vendor: { ...seedDocument.vendor, ...saved.vendor }, selectedRoles: saved.selectedRoles ?? seedDocument.selectedRoles, roleAnswers: saved.roleAnswers ?? seedDocument.roleAnswers, meetingTranscript: saved.meetingTranscript ?? "", selectedNoteIds: saved.selectedNoteIds ?? [], customNote: saved.customNote ?? "", lines: (saved.lines ?? seedDocument.lines).map((line) => ({ ...line, tax: String(line.tax) === "課税" ? "税別" : line.tax })), dismissedEstimateCandidates: legacy.dismissedEstimateCandidates ?? [], expenseLines: saved.expenseLines ?? legacy.settlementLines ?? seedDocument.expenseLines }); } if (savedClients.length) setClients(savedClients); setRecords(savedRecords); hydrated.current = true; setSaveState("saved"); })(); }, []);
   useEffect(() => { if (!hydrated.current) return; setSaveState("saving"); const timer = window.setTimeout(async () => { await localDocumentRepository.save({ ...document, updatedAt: new Date().toISOString() }); setSaveState("saved"); }, 500); return () => window.clearTimeout(timer); }, [document]);
@@ -43,9 +49,54 @@ export function DocumentWorkspace() {
   useEffect(() => { try { const saved = window.localStorage.getItem("creator-os:theme"); if (saved === "light" || saved === "dark") setTheme(saved); } catch {} }, []);
   useEffect(() => { const root = window.document.documentElement; root.classList.toggle("dark", theme === "dark"); try { window.localStorage.setItem("creator-os:theme", theme); } catch {} }, [theme]);
 
+  useEffect(() => {
+    const node = previewViewportRef.current;
+    if (!node) return;
+    const updateScale = () => {
+      const width = node.getBoundingClientRect().width;
+      const next = Math.min(1, Math.max(0.36, (width - 32) / 794));
+      setPreviewScale(Number(next.toFixed(3)));
+    };
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(node);
+    window.addEventListener("resize", updateScale);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateScale);
+    };
+  }, []);
+
   const setDocument = (updater: (current: ProjectDocument) => ProjectDocument) => setDocumentState((current) => updater(current));
   const update = <K extends keyof ProjectDocument>(key: K, value: ProjectDocument[K]) => setDocumentState((current) => ({ ...current, [key]: value }));
   const goTab = (next: FormTab) => { setTab(next); const match = tabs.find((item) => item.id === next); if (match?.document) setDocumentKind(match.document); };
+  const scrollMobilePane = (pane: "form" | "preview") => {
+    setMobilePane(pane);
+    window.setTimeout(() => {
+      const target = pane === "form" ? formPaneRef.current : previewPaneRef.current;
+      target?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+  const startSplitResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const node = splitAreaRef.current;
+    if (!node) return;
+    event.preventDefault();
+    const rect = node.getBoundingClientRect();
+    const move = (moveEvent: PointerEvent) => {
+      const raw = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+      setSplitPercent(Math.min(72, Math.max(36, raw)));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.document.body.style.cursor = "";
+      window.document.body.style.userSelect = "";
+    };
+    window.document.body.style.cursor = "col-resize";
+    window.document.body.style.userSelect = "none";
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const saveClient = async () => { const client = document.client.id ? document.client : { ...document.client, id: createId() }; const next = clients.some((item) => item.id === client.id) ? clients.map((item) => item.id === client.id ? client : item) : [...clients, client]; setClients(next); update("client", client); await localDocumentRepository.saveClients(next); };
   const deleteClient = async (id: string) => { const next = clients.filter((item) => item.id !== id); setClients(next); await localDocumentRepository.saveClients(next); if (document.client.id === id) update("client", emptyClient()); };
   const printableName = recommendedPdfFileName(document, documentKind);
@@ -90,9 +141,9 @@ export function DocumentWorkspace() {
           <button onClick={printCurrent} className="min-h-10 whitespace-nowrap rounded-full bg-brand px-3 text-xs font-bold text-white shadow-sm transition hover:bg-brand-bright sm:px-5 sm:text-sm">PDF出力</button>
         </div>
       </div>
-      <div className="flex border-t border-line lg:hidden">{(["form", "preview"] as const).map((pane) => <button key={pane} onClick={() => setMobilePane(pane)} style={mobilePane === pane ? { borderColor: roleColor.color, color: roleColor.color } : undefined} className={`min-h-12 flex-1 border-b-2 text-sm font-bold ${mobilePane === pane ? "" : "border-transparent text-fg-faint"}`}>{pane === "form" ? "入力" : "プレビュー"}</button>)}</div>
+      <div className="flex border-t border-line lg:hidden">{(["form", "preview"] as const).map((pane) => <button key={pane} onClick={() => scrollMobilePane(pane)} style={mobilePane === pane ? { borderColor: roleColor.color, color: roleColor.color } : undefined} className={`min-h-12 flex-1 border-b-2 text-sm font-bold ${mobilePane === pane ? "" : "border-transparent text-fg-faint"}`}>{pane === "form" ? "入力" : "プレビュー"}</button>)}</div>
     </header>
-    <div className="flex min-h-0 flex-1">
+    <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:overflow-hidden">
       <aside className="no-print hidden w-60 shrink-0 flex-col border-r border-line bg-[#111113] p-4 lg:flex">
         <div className="mb-6 rounded-xl border border-line bg-surface/60 p-4">
           <p className="text-[10px] font-bold tracking-brand" style={{ color: roleColor.color }}>CREATOR OS</p>
@@ -116,22 +167,27 @@ export function DocumentWorkspace() {
           <p className="mt-1 text-xs text-fg-muted">{document.selectedRoles.join(" / ") || "職種未選択"}</p>
         </div>
       </aside>
-      <section className={`${mobilePane === "form" ? "flex" : "hidden"} no-print w-full min-w-0 flex-col border-r border-line bg-surface lg:flex lg:min-w-[480px] lg:flex-1 lg:basis-0`}>
+      <div ref={splitAreaRef} className="flex min-h-0 flex-1 flex-col lg:flex-row lg:overflow-hidden">
+      <section ref={formPaneRef} className="no-print flex w-full min-w-0 flex-col border-r border-line bg-surface lg:min-w-[360px] lg:flex-[0_0_var(--form-pane-size)]">
         <nav className="scrollbar-thin flex shrink-0 overflow-x-auto border-b border-line px-2" aria-label="作成手順">{tabs.map((item, index) => <button key={item.id} onClick={() => goTab(item.id)} style={tab === item.id ? { borderColor: roleColor.color } : undefined} className={`min-h-14 shrink-0 border-b-2 px-3 text-sm transition ${tab === item.id ? "font-bold text-fg" : "border-transparent text-fg-faint hover:text-fg"}`}><span className="mr-1 text-[10px] text-fg-faint">{index + 1}</span><span className="hidden 2xl:inline">{item.label}</span><span className="2xl:hidden">{item.short}</span></button>)}</nav>
         <div className="scrollbar-thin flex-1 overflow-y-auto p-5 pb-24 sm:p-7 sm:pb-24 lg:pb-7"><ProjectForms tab={tab} document={document} documentKind={documentKind} totals={totals} clients={clients} records={records} recommendedFileName={printableName} update={update} setDocument={setDocument} saveClient={saveClient} selectClient={(id) => { const client = clients.find((item) => item.id === id); if (client) update("client", client); }} newClient={() => update("client", emptyClient())} deleteClient={deleteClient} onPrint={printCurrent} onSaveRecord={saveRecord} onDuplicateRecord={duplicateRecord} onDeleteRecord={deleteRecord} onClearLocalData={clearLocalData} onSelectDocument={setDocumentKind} />
           <div className="mt-8 flex justify-between border-t border-line pt-5">{(() => { const index = tabs.findIndex((item) => item.id === tab); return <><button disabled={index === 0} onClick={() => goTab(tabs[index - 1].id)} className="min-h-11 px-3 text-sm font-semibold text-fg-muted disabled:opacity-30">← 戻る</button><button disabled={index === tabs.length - 1} onClick={() => goTab(tabs[index + 1].id)} className="min-h-11 rounded-full bg-fg px-6 text-sm font-bold text-canvas disabled:opacity-30">次へ →</button></>; })()}</div>
         </div>
       </section>
-      <section className={`${mobilePane === "preview" ? "flex" : "hidden"} preview-pane min-w-0 flex-1 flex-col bg-preview lg:flex lg:w-[390px] lg:flex-none xl:w-[420px]`}>
+      <button type="button" aria-label="入力とプレビューの幅を変更" title="ドラッグして幅を変更" onPointerDown={startSplitResize} className="no-print hidden w-3 shrink-0 cursor-col-resize items-center justify-center border-x border-line bg-canvas transition hover:bg-surface-2 lg:flex">
+        <span className="h-12 w-1 rounded-full" style={{ backgroundColor: roleColor.color }} />
+      </button>
+      <section ref={previewPaneRef} className="preview-pane flex min-h-[80vh] min-w-0 flex-col bg-preview lg:min-h-0 lg:flex-1">
         <nav className="no-print scrollbar-thin flex shrink-0 overflow-x-auto border-b border-line bg-preview px-3 pt-2">{documentTabs.map((item) => <button key={item.id} onClick={() => setDocumentKind(item.id)} style={documentKind === item.id ? { borderTopColor: roleColor.color } : undefined} className={`min-h-11 shrink-0 rounded-t-xl border-t-2 px-4 text-sm font-semibold transition ${documentKind === item.id ? "bg-white text-ink shadow-sm" : "border-transparent text-fg-faint hover:text-fg-muted"}`}>{item.label}</button>)}</nav>
-        <div className="doc-viewport scrollbar-thin flex-1 overflow-auto p-4 pb-24 sm:p-8 sm:pb-24 lg:pb-8"><div className="flex min-w-max justify-center"><DocumentPreview kind={documentKind} document={document} totals={totals} /></div></div>
+        <div ref={previewViewportRef} className="doc-viewport scrollbar-thin flex-1 overflow-auto p-4 pb-24 sm:p-8 sm:pb-24 lg:p-4 lg:pb-4 xl:p-5"><div className="flex justify-center"><div className="doc-zoom origin-top" style={{ zoom: previewScale } as CSSProperties}><DocumentPreview kind={documentKind} document={document} totals={totals} /></div></div></div>
       </section>
+      </div>
     </div>
     <nav className="no-print fixed bottom-3 left-3 z-40 grid w-[calc(100vw-1.5rem)] max-w-[360px] rounded-2xl border border-line bg-surface/95 p-1 shadow-float backdrop-blur lg:hidden" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }} aria-label="モバイルナビ">
       {[
         { label: "Home", jp: "ホーム", active: tab === "roles", action: () => { setMobilePane("form"); goTab("roles"); } },
-        { label: "Projects", jp: "案件", active: ["hearing", "parties", "estimate", "settlement", "confirmation", "delivery", "invoice"].includes(tab), action: () => { setMobilePane("form"); goTab("hearing"); } },
-        { label: "Docs", jp: "書類", active: mobilePane === "preview" || ["export", "records"].includes(tab), action: () => { setMobilePane("preview"); } },
+        { label: "Projects", jp: "案件", active: ["hearing", "parties", "estimate", "settlement", "confirmation", "delivery", "invoice"].includes(tab), action: () => { goTab("hearing"); scrollMobilePane("form"); } },
+        { label: "Docs", jp: "書類", active: mobilePane === "preview" || ["export", "records"].includes(tab), action: () => scrollMobilePane("preview") },
         { label: "Notice", jp: "通知", active: roadmapOpen, action: () => setRoadmapOpen(true) },
       ].map((item) => <button key={item.label} type="button" onClick={item.action} className={`min-h-12 rounded-xl text-center transition ${item.active ? "bg-surface-2 text-fg" : "text-fg-faint"}`} style={item.active ? { boxShadow: `inset 0 3px 0 ${roleColor.color}` } : undefined}>
         <span className="block text-[10px] font-bold">{item.label}</span>
