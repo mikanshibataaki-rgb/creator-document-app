@@ -1,11 +1,10 @@
-import Link from "next/link";
 import { AppCard } from "@/components/AppCard";
-import { availableApps, plannedApps, portalApps } from "@/data/apps";
+import { developmentApps, publishedApps, portalApps } from "@/data/apps";
 
-const principles = [
-  "必要なアプリへすぐ入れる",
-  "書類・契約・記録をひとつの入口へ",
-  "現場でもスマホで確認しやすい",
+const statusItems = [
+  { label: "公開中", value: "2", detail: "すぐに開けるアプリ" },
+  { label: "開発中", value: "3", detail: "近日公開予定のアプリ" },
+  { label: "対象", value: "Creators", detail: "個人・スタジオ・小規模チーム" },
 ];
 
 export default function Home() {
@@ -13,103 +12,110 @@ export default function Home() {
     <main>
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">CREATOR BUSINESS APP PORTAL</p>
-          <h1>クリエイターの仕事を、ひとつの入口から。</h1>
+          <p className="eyebrow">CREATOR WORKFLOW PORTAL</p>
+          <h1>クリエイターの仕事を、もっと整理しやすく。</h1>
           <p className="hero-lead">
-            案件、契約、日誌、スケジュール、単価設計まで。制作の面倒な事務作業を、迷わず開ける
-            <strong> クリエイター業務OS </strong>
-            として育てていきます。
+            案件管理、契約、制作記録、撮影準備、SNS戦略まで。
+            <br />
+            クリエイターの現場で起きる面倒な作業を、ひとつずつアプリで支えるための入口です。
+          </p>
+          <p className="hero-note">
+            現在はベータ版・開発中のアプリを含みます。実際の業務で使いながら改善していくクリエイター向けOSです。
           </p>
           <div className="hero-actions">
-            <Link className="button primary" href="/apps">
-              アプリ一覧を見る
-            </Link>
-            <Link className="button secondary" href="/feedback">
-              意見を送る
-            </Link>
-          </div>
-          <div className="beta-note">
-            <strong>Beta</strong>
-            <span>一部の業務アプリを先行公開中です。使いやすさを確認しながら、少しずつ整えていきます。</span>
+            <a className="button button-primary" href="#live-apps">
+              公開中のアプリを見る
+            </a>
+            <a className="button button-secondary" href="#development-apps">
+              開発中のアプリを見る
+            </a>
           </div>
         </div>
-        <div className="hero-panel" aria-label="Creator OS の概要">
-          <div className="panel-header">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div className="panel-title-row">
-            <div>
-              <small>Today</small>
-              <strong>Creator OS</strong>
+
+        <div className="hero-visual" aria-label="Creator OS のステータス概要">
+          <div className="visual-window">
+            <div className="visual-header">
+              <span></span>
+              <span></span>
+              <span></span>
             </div>
-            <span className="live-badge">BETA</span>
-          </div>
-          <div className="preview-frame">
-            <img src="/previews/project-manager.jpg" alt="クリエイター案件マネージャーの画面プレビュー" />
-          </div>
-          <div className="os-grid">
-            {portalApps.slice(0, 5).map((app, index) => (
-              <div className="os-tile" key={app.id}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{app.shortName}</strong>
-                <small>{app.status}</small>
-              </div>
-            ))}
-          </div>
-          <div className="signal-row">
-            {principles.map((item) => (
-              <div key={item}>
-                <span className="signal-dot"></span>
-                <p>{item}</p>
-              </div>
-            ))}
+            <div className="visual-title">
+              <span>Creator OS</span>
+              <strong>Apps Gateway</strong>
+            </div>
+            <div className="visual-preview">
+              <img src="/previews/project-manager.jpg" alt="クリエーター案件マネージャーの画面プレビュー" />
+            </div>
+            <div className="visual-grid">
+              {portalApps.map((app) => (
+                <div className="visual-tile" key={app.id}>
+                  <span>{app.order}</span>
+                  <strong>{app.category}</strong>
+                  <small>{app.status === "published" ? "Live" : "Soon"}</small>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="section-block">
+      <section className="section-block" id="apps">
         <div className="section-heading">
-          <p className="eyebrow">AVAILABLE NOW</p>
-          <h2>まず使えるアプリ</h2>
-          <p>案件、契約、記録など、制作の仕事で使うアプリをここから選べます。</p>
+          <p className="eyebrow">APPS</p>
+          <h2>必要な業務アプリへ、ここから移動できます。</h2>
+          <p>公開中のアプリは外部URLで開きます。開発中のアプリは準備が整い次第、順次追加していきます。</p>
         </div>
-        <div className="app-grid">
-          {availableApps.map((app, index) => (
-            <AppCard app={app} featured={index === 0} key={app.id} />
-          ))}
+
+        <div className="app-section" id="live-apps">
+          <div className="app-section-heading">
+            <span>Live Apps</span>
+            <h3>公開中アプリ</h3>
+          </div>
+          <div className="app-grid live-grid">
+            {publishedApps.map((app) => (
+              <AppCard app={app} key={app.id} />
+            ))}
+          </div>
+        </div>
+
+        <div className="app-section" id="development-apps">
+          <div className="app-section-heading">
+            <span>Coming Soon</span>
+            <h3>開発中アプリ</h3>
+          </div>
+          <div className="app-grid">
+            {developmentApps.map((app) => (
+              <AppCard app={app} key={app.id} />
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="section-block split-section">
+      <section className="section-block about-section" id="about">
         <div>
-          <p className="eyebrow">COMING NEXT</p>
-          <h2>次に広がる業務サポート</h2>
-          <p>
-            準備中のアプリも、制作の予定管理や単価設計など、日々の不安を減らす機能として順次整えていきます。
-          </p>
+          <p className="eyebrow">ABOUT</p>
+          <h2>制作の周辺業務を、ひとつずつ軽くする。</h2>
         </div>
-        <div className="mini-list">
-          {plannedApps.map((app) => (
-            <div className="mini-item" key={app.id}>
-              <span>{app.status}</span>
-              <strong>{app.name}</strong>
-              <p>{app.bestFor}</p>
+        <p>
+          Creator OSは、クリエイターや小規模チームが日々の制作に集中しやすくなるよう、
+          案件・契約・記録・準備・発信の入口をまとめるポータルです。
+        </p>
+      </section>
+
+      <section className="section-block status-section" id="status">
+        <div className="section-heading compact-heading">
+          <p className="eyebrow">STATUS</p>
+          <h2>現在の公開状況</h2>
+        </div>
+        <div className="status-grid">
+          {statusItems.map((item) => (
+            <div className="status-panel" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.detail}</p>
             </div>
           ))}
         </div>
-      </section>
-
-      <section className="cta-band">
-        <div>
-          <p className="eyebrow">START</p>
-          <h2>目的に合わせて、仕事の入口を選ぶ。</h2>
-          <p>案件を整理したい、契約内容を残したい、現場の記録をつけたい。今の作業に近いアプリから開けます。</p>
-        </div>
-        <Link className="button primary" href="/apps">
-          アプリを選ぶ
-        </Link>
       </section>
     </main>
   );
