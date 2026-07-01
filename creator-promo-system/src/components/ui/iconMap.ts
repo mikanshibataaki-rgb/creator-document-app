@@ -1,0 +1,36 @@
+import {
+  BriefcaseBusiness,
+  Camera,
+  Check,
+  ClipboardList,
+  Copy,
+  FileText,
+  Image,
+  Layers,
+  LayoutTemplate,
+  Mic2,
+  MonitorPlay,
+  PenLine,
+  Sparkles,
+  Video,
+  WandSparkles,
+} from 'lucide-react'
+import type { IconName } from '../../utils/promoTypes'
+
+export const iconMap = {
+  briefcase: BriefcaseBusiness,
+  camera: Camera,
+  check: Check,
+  clipboard: ClipboardList,
+  copy: Copy,
+  file: FileText,
+  image: Image,
+  layers: Layers,
+  layout: LayoutTemplate,
+  mic: Mic2,
+  monitor: MonitorPlay,
+  pen: PenLine,
+  spark: Sparkles,
+  video: Video,
+  wand: WandSparkles,
+} satisfies Record<IconName, typeof BriefcaseBusiness>
